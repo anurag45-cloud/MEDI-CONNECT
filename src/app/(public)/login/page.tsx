@@ -1,0 +1,10 @@
+import React from "react";
+import { AuthCard } from "@/components/auth/auth-card";
+
+export default function LoginPage() {
+  return (
+    <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6">
+      <AuthCard portal="patient" mode="login" />
+    </div>
+  );
+}
