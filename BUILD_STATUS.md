@@ -7,35 +7,40 @@ Architecture: Next.js 14 App Router, TypeScript (Strict), Tailwind CSS, Supabase
 
 | Phase | Description | Status | Evidence / Verification |
 |---|---|---|---|
-| **Phase 1** | Audit & Design Foundation, Theme Tokens, Layouts | **DONE** | Brand tokens, emergency banner, accessible global navbar, footer, `next build` 35 routes |
+| **Phase 1** | Audit & Design Foundation, Theme Tokens, Layouts | **DONE** | Global Light Theme default (`src/app/layout.tsx`), high-contrast accessible navbar, footer, `next build` 39 routes with 0 errors |
 | **Phase 2** | Database Schema, Migrations, RLS, Functions, Seed Data | **DONE** | `supabase/migrations/20261024000000_init_mediconnect.sql`, `supabase/seed.sql`, 8 Kota hospitals, 30 doctors, 20-60 beds/hospital |
 | **Phase 3** | Authentication & Multi-Portal RBAC | **DONE** | 4 separate login experiences (`/login`, `/doctor/login`, `/hospital/login`, `/admin/login`), OAuth providers, 1-click demo helpers |
-| **Phase 4** | Patient Profile, Medical Details & Problem Reports | **DONE** | `/profile` (BMI, age, vitals, allergies, explicit consent), `/report-problem` (ticket submission, SLA, status tracking) |
+| **Phase 4** | Patient Profile, Medical Details & Problem Reports | **DONE** | `/profile` (BMI, age, vitals, allergies, explicit consent), `/report-problem` (ticket submission, SLA, status tracking via `/api/reports`) |
 | **Phase 5** | Hospital Discovery, Bed Stats & Maps Integration | **DONE** | `/hospitals`, `/hospitals/[id]`, partner vs non-partner labeling, Haversine distance calculations, OpenStreetMap fallback |
 | **Phase 6** | Doctor Discovery, Gemini AI Triage & Doctor Portal | **DONE** | `/find-doctor`, `/api/ai/specialty-advisor`, emergency warning bypass, `/doctor/dashboard`, `/doctor/appointments/[id]` workspace |
-| **Phase 7** | Appointment Booking Engine & Razorpay Checkout | **DONE** | `/appointments`, slot conflict prevention, `/api/payments/create-order`, `/api/payments/verify`, HMAC SHA256 verification |
-| **Phase 8** | Real-Time Bed Allocation & 50% Advance Booking Engine | **DONE** | `/bed-bookings`, `/api/beds/hold` (10-min hold timer), `/api/beds/confirm`, 50% advance breakdown, QR code admission receipt |
-| **Phase 9** | Hospital Management Portal & Super-Admin Console | **DONE** | `/hospital/dashboard`, `/hospital/beds`, `/hospital/admissions` (check-in & discharge), `/hospital/team`, `/admin/dashboard` |
-| **Phase 10** | Transactional Emails, Notifications, Tests & Documentation | **DONE** | Resend email templates, 18 automated Vitest tests passing (5 suites), comprehensive `README.md` |
+| **Phase 7** | Appointment Booking Engine & Razorpay Checkout | **DONE** | `/appointments`, slot conflict prevention, `/api/appointments`, `/api/payments/create-order`, `/api/payments/verify`, HMAC SHA256 verification |
+| **Phase 8** | Real-Time Bed Allocation & 50% Advance Booking Engine | **DONE** | `/bed-bookings`, `/api/beds`, `/api/beds/hold` (10-min hold timer), `/api/beds/confirm`, 50% advance breakdown, QR code admission receipt |
+| **Phase 9** | Hospital Management Portal & Super-Admin Console | **DONE** | `/hospital/dashboard`, `/hospital/beds` (live ward inventory via `/api/beds`), `/hospital/admissions`, `/admin/dashboard` (ticket resolution via `/api/reports`) |
+| **Phase 10** | Transactional Emails, Notifications, Tests & Documentation | **DONE** | Resend email templates, in-app notifications dropdown via `/api/notifications`, 22 automated Vitest tests passing (6 suites), comprehensive documentation |
 
 ---
 
-## External Integrations Verification
+## Server-Side REST API Endpoints
 
-| Service | Mode / State | Verification / Fallback | Evidence |
+| Endpoint | Methods | Description | Status |
 |---|---|---|---|
-| **Supabase PostgreSQL & RLS** | Migrations & Data Model Ready | Full versioned migration with RLS policies, atomic functions `hold_bed`, `confirm_bed_booking`, `release_expired_holds` | `supabase/migrations/20261024000000_init_mediconnect.sql` |
-| **Google Gemini 1.5 Flash** | Server-Side Structured JSON | Server endpoint `/api/ai/specialty-advisor` with Zod validation and clinical heuristic fallback | `src/app/api/ai/specialty-advisor/route.ts` |
-| **Razorpay Test Mode** | Server-Side HMAC SHA256 | Cryptographic signature verification, order creation, refund handler, webhook validation | `src/lib/payments/razorpay.ts`, `tests/unit/payments.test.ts` (Passed) |
-| **Maps & Routing** | Dual Provider | Mathematically verified Haversine distance, driving ETA, OpenStreetMap + Google Maps | `src/lib/maps/distance.ts`, `tests/unit/distance.test.ts` (Passed) |
-| **Resend Email** | Transactional Dispatch | Structured templates for appointments, bed confirmations, and reports with safe console fallback | `src/lib/email/resend.ts` |
+| `/api/appointments` | `GET`, `POST`, `PATCH` | Fetch appointments, book slots with anti-conflict verification, update/cancel appointments | **VERIFIED (200 OK)** |
+| `/api/beds` | `GET`, `PATCH` | Live beds by hospital and ward, automated 10-min hold release, occupancy safety check | **VERIFIED (200 OK)** |
+| `/api/beds/hold` | `POST` | Atomic 10-minute hold reservation with 50% advance calculation | **VERIFIED (200 OK)** |
+| `/api/beds/confirm` | `POST` | Payment signature verification, hold lock, QR code generation | **VERIFIED (200 OK)** |
+| `/api/reports` | `GET`, `POST`, `PATCH` | Patient grievance filing, admin dashboard ticket review and resolution dispatch | **VERIFIED (200 OK)** |
+| `/api/notifications` | `GET`, `POST` | User & role-based notifications, unread counts, mark-as-read actions | **VERIFIED (200 OK)** |
+| `/api/ai/specialty-advisor` | `POST` | Gemini Flash structured clinical triage with emergency warning detection | **VERIFIED (200 OK)** |
+| `/api/payments/create-order`| `POST` | Razorpay order generation for appointment or 50% bed advance | **VERIFIED (200 OK)** |
+| `/api/payments/verify` | `POST` | Server-side HMAC SHA256 cryptographic payment verification | **VERIFIED (200 OK)** |
+| `/api/webhooks/razorpay` | `POST` | Webhook verification and automatic status reconciliation | **VERIFIED (200 OK)** |
 
 ---
 
 ## Automated Test Evidence
 
 Command: `npm test`
-Result: **5 Test Files Passed | 18 Tests Passed (0 Failed)**
+Result: **6 Test Files Passed | 22 Tests Passed (0 Failed)**
 
 1. `tests/unit/bed-engine.test.ts`:
    - Rejects transition to available if patient is admitted (occupied)
@@ -60,3 +65,7 @@ Result: **5 Test Files Passed | 18 Tests Passed (0 Failed)**
    - Rejects forged or tampered payment signature
    - Verifies authentic webhook signature against raw request body
    - Computes 50% advance payment in integer paise accurately
+6. `tests/unit/api-routes.test.ts`:
+   - Accepts valid problem report input
+   - Rejects short descriptions (<20 characters) and short subjects (<5 characters)
+   - Detects conflicting appointment slots for the same doctor
