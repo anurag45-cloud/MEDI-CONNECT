@@ -215,3 +215,38 @@ export interface AuditLog {
   ip_address?: string;
   created_at: string;
 }
+
+export interface LabParameter {
+  name: string;
+  result: number | string;
+  unit: string;
+  reference_range: string;
+  flag: "normal" | "low" | "high" | "critical";
+  plain_explanation?: string;
+}
+
+export interface LabReport {
+  id: string;
+  patient_id: string;
+  patient_name: string;
+  title: string;
+  category: "blood" | "lipid" | "diabetes" | "thyroid" | "renal_liver" | "urine" | "other";
+  sample_collected_at: string;
+  report_date: string;
+  laboratory_name: string;
+  ordering_doctor_name: string;
+  status: "normal" | "borderline" | "needs_attention" | "critical";
+  summary: string;
+  parameters: LabParameter[];
+  clinical_impression: string;
+  pdf_url?: string;
+  created_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: "user" | "bot";
+  text: string;
+  timestamp: string;
+}
+

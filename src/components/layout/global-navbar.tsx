@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Bell,
   CheckCheck,
+  FileText,
 } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ export function GlobalNavbar() {
     { href: "/hospitals", label: "Hospitals & Beds", icon: Building2 },
     { href: "/appointments", label: "Appointments", icon: Calendar },
     { href: "/bed-bookings", label: "Bed Bookings", icon: BedDouble },
+    { href: "/lab-reports", label: "Lab Reports", icon: FileText },
   ];
 
   const isActive = (href: string) => {
@@ -85,12 +87,12 @@ export function GlobalNavbar() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-surface/90 backdrop-blur-md transition-colors">
-      <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto flex h-18 min-h-[4.5rem] items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-6 lg:gap-8">
           <Link
             href="/"
-            className="flex items-center gap-2.5 font-bold text-xl tracking-tight text-foreground hover:opacity-95"
+            className="flex items-center gap-2.5 font-bold text-xl tracking-tight text-foreground hover:opacity-95 shrink-0"
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-teal text-white shadow-sm">
               <Activity className="h-5 w-5" />
@@ -101,7 +103,7 @@ export function GlobalNavbar() {
             </span>
           </Link>
 
-          {/* Desktop Nav Links */}
+          {/* Desktop Nav Links - Set Vertically (Icon on Top, Label Below) */}
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
               const Icon = link.icon;
@@ -110,14 +112,14 @@ export function GlobalNavbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  className={`flex flex-col items-center justify-center text-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-150 ${
                     active
-                      ? "bg-brand-mint text-brand-teal font-semibold dark:bg-teal-950/60 dark:text-teal-300"
+                      ? "bg-brand-mint text-brand-teal font-semibold dark:bg-teal-950/60 dark:text-teal-300 shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
-                  {link.label}
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="text-[11px] leading-tight whitespace-nowrap">{link.label}</span>
                 </Link>
               );
             })}
@@ -126,16 +128,18 @@ export function GlobalNavbar() {
 
         {/* Right Action Icons & Menus */}
         <div className="hidden md:flex items-center gap-2">
-          {/* Portals Dropdown */}
+          {/* Portals Dropdown - Set Vertically */}
           <div className="relative">
             <button
               onClick={() => setPortalDropdownOpen(!portalDropdownOpen)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-surface hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              className="flex flex-col items-center justify-center text-center gap-1 px-3 py-1.5 rounded-xl border border-border bg-surface hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-150"
               aria-expanded={portalDropdownOpen}
             >
-              <Shield className="h-3.5 w-3.5 text-brand-teal" />
-              <span>Staff Portals</span>
-              <ChevronDown className="h-3 w-3" />
+              <Shield className="h-4 w-4 text-brand-teal shrink-0" />
+              <span className="text-[11px] leading-tight whitespace-nowrap flex items-center gap-0.5">
+                <span>Staff Portals</span>
+                <ChevronDown className="h-3 w-3" />
+              </span>
             </button>
 
             {portalDropdownOpen && (
