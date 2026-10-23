@@ -1,5 +1,8 @@
-import React from "react";
+"use client";
+
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Stethoscope,
   Building2,
@@ -10,11 +13,54 @@ import {
   Clock,
   MapPin,
   Sparkles,
+  Search,
+  ShieldAlert,
+  PhoneCall,
+  CheckCircle2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+const QUICK_SYMPTOMS = [
+  "Chest Pain",
+  "Severe Headache",
+  "Skin Rash",
+  "Knee / Joint Pain",
+  "Fever & Cough",
+];
 
 export default function PatientDashboardPage() {
+  const router = useRouter();
+  const [symptomText, setSymptomText] = useState("");
+
+  const isEmergency = useMemo(() => {
+    const text = symptomText.toLowerCase();
+    return (
+      text.includes("chest pain") ||
+      text.includes("heart attack") ||
+      text.includes("cannot breathe") ||
+      text.includes("unconscious") ||
+      text.includes("stroke") ||
+      text.includes("severe bleeding")
+    );
+  }, [symptomText]);
+
+  const handleSearchDoctor = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (symptomText.trim()) {
+      router.push(`/find-doctor?symptoms=${encodeURIComponent(symptomText.trim())}`);
+    } else {
+      router.push("/find-doctor");
+    }
+  };
+
+  const handleSelectQuickSymptom = (symptom: string) => {
+    setSymptomText(symptom);
+    router.push(`/find-doctor?symptoms=${encodeURIComponent(symptom)}`);
+  };
+
   return (
     <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* 1. Concise Personalized Greeting */}
@@ -40,9 +86,9 @@ export default function PatientDashboardPage() {
 
       {/* 2. Two Primary Cards: Find a Doctor & Find a Hospital */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Card 1: Find a Doctor */}
-        <Card className="hover:border-brand-teal/50 hover:shadow-md transition-all group overflow-hidden">
-          <CardContent className="p-6 sm:p-8 flex flex-col justify-between h-full space-y-6">
+        {/* Card 1: Find a Doctor with Interactive Symptom Input & AI Triage */}
+        <Card className="hover:border-brand-teal/50 hover:shadow-md transition-all group overflow-hidden border-border bg-surface">
+          <CardContent className="p-6 sm:p-8 flex flex-col justify-between h-full space-y-5">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-mint text-brand-teal dark:bg-teal-950/70 dark:text-teal-300">
@@ -58,10 +104,60 @@ export default function PatientDashboardPage() {
                 <h2 className="text-xl font-bold text-foreground group-hover:text-brand-teal transition-colors">
                   Find a Doctor
                 </h2>
-                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
                   Describe symptoms in plain text to identify recommended medical specialties and book verified doctors across Kota hospitals.
                 </p>
               </div>
+
+              {/* Interactive Symptom Input Directly Inside Card */}
+              <form onSubmit={handleSearchDoctor} className="space-y-2.5 pt-1">
+                <div className="relative">
+                  <Input
+                    placeholder="Type symptoms (e.g. chest discomfort, headache, knee pain)..."
+                    value={symptomText}
+                    onChange={(e) => setSymptomText(e.target.value)}
+                    className="h-11 pr-10 text-xs sm:text-sm bg-surface border-border focus:border-brand-teal"
+                  />
+                  <button
+                    type="submit"
+                    className="absolute right-2 top-2 p-1.5 rounded-lg bg-brand-teal text-white hover:bg-brand-teal-hover transition-colors"
+                    title="Search & Analyze"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Popular Symptom Pills */}
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="text-[11px] font-semibold text-muted-foreground">Quick:</span>
+                  {QUICK_SYMPTOMS.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => handleSelectQuickSymptom(tag)}
+                      className="px-2 py-0.5 rounded-md bg-muted/60 hover:bg-brand-mint hover:text-brand-teal text-[11px] text-muted-foreground transition-colors border border-border/50"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Immediate Emergency Alert if acute keywords detected */}
+                {isEmergency && (
+                  <div className="rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 p-2.5 text-xs text-red-900 dark:text-red-200 flex items-center justify-between gap-2 animate-pulse">
+                    <span className="font-semibold flex items-center gap-1.5">
+                      <ShieldAlert className="h-4 w-4 text-brand-emergency shrink-0" />
+                      Critical emergency detected!
+                    </span>
+                    <a
+                      href="tel:108"
+                      className="px-2.5 py-1 rounded bg-brand-emergency text-white font-bold hover:bg-red-800 text-[11px] shrink-0"
+                    >
+                      Dial 108
+                    </a>
+                  </div>
+                )}
+              </form>
 
               <div className="flex flex-wrap gap-2 text-xs text-muted-foreground pt-1">
                 <span className="px-2 py-0.5 rounded bg-muted/60">30+ Verified Clinicians</span>
@@ -70,18 +166,19 @@ export default function PatientDashboardPage() {
               </div>
             </div>
 
-            <Link
-              href="/find-doctor"
+            {/* Action Button */}
+            <button
+              onClick={() => handleSearchDoctor()}
               className="inline-flex items-center justify-between w-full px-5 py-3 rounded-xl bg-brand-teal text-white font-semibold text-sm hover:bg-brand-teal-hover transition-colors shadow-sm"
             >
-              <span>Search Doctors & Consultations</span>
+              <span>{symptomText.trim() ? "Analyze Symptoms & Match Doctors" : "Search Doctors & Consultations"}</span>
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Link>
+            </button>
           </CardContent>
         </Card>
 
         {/* Card 2: Find a Hospital & Reserve a Bed */}
-        <Card className="hover:border-brand-teal/50 hover:shadow-md transition-all group overflow-hidden">
+        <Card className="hover:border-brand-teal/50 hover:shadow-md transition-all group overflow-hidden border-border bg-surface">
           <CardContent className="p-6 sm:p-8 flex flex-col justify-between h-full space-y-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
