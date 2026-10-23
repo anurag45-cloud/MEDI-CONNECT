@@ -71,6 +71,21 @@ function AppointmentsContent() {
     },
   ]);
 
+  useEffect(() => {
+    async function loadAppointments() {
+      try {
+        const res = await fetch("/api/appointments?patientId=demo-patient-001");
+        const data = await res.json();
+        if (data.success && Array.isArray(data.appointments) && data.appointments.length > 0) {
+          setMyAppointments(data.appointments);
+        }
+      } catch (err) {
+        console.error("Failed to load appointments:", err);
+      }
+    }
+    loadAppointments();
+  }, []);
+
   const activeDoctor = DEMO_DOCTORS.find((d) => d.id === selectedDoctorId) || DEMO_DOCTORS[0];
 
   // Available slots for doctor
@@ -124,32 +139,28 @@ function AppointmentsContent() {
         throw new Error(verifyData.error || "Payment verification failed");
       }
 
-      // 2. Step 10: Confirm appointment
-      const newAppointment: Appointment = {
-        id: `apt-${Date.now().toString().slice(-4)}`,
-        doctor_id: activeDoctor.id,
-        doctor_name: activeDoctor.full_name,
-        doctor_specialty: activeDoctor.specialty,
-        doctor_photo_url: activeDoctor.photo_url,
-        patient_id: "demo-patient-001",
-        patient_name: patientDetails.name,
-        patient_phone: patientDetails.phone,
-        hospital_id: activeDoctor.hospital_id,
-        hospital_name: activeDoctor.hospital_name,
-        slot_time: `${selectedDate}T${selectedSlot}:00Z`,
-        duration_mins: activeDoctor.appointment_duration_mins,
-        fee: activeDoctor.consultation_fee,
-        reason_for_visit: patientDetails.reason,
-        patient_notes: patientDetails.notes,
-        status: "confirmed",
-        payment_status: "captured",
-        payment_id: verifyData.paymentId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+      // 2. Step 10: Confirm appointment via server API with conflict checking
+      const aptRes = await fetch("/api/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          doctorId: activeDoctor.id,
+          patientName: patientDetails.name,
+          patientPhone: patientDetails.phone,
+          slotTime: `${selectedDate}T${selectedSlot}:00Z`,
+          reasonForVisit: patientDetails.reason,
+          patientNotes: patientDetails.notes,
+          paymentId: verifyData.paymentId,
+        }),
+      });
 
-      setMyAppointments([newAppointment, ...myAppointments]);
-      setConfirmedBooking(newAppointment);
+      const aptData = await aptRes.json();
+      if (!aptRes.ok || !aptData.success) {
+        throw new Error(aptData.error || "Failed to confirm appointment");
+      }
+
+      setMyAppointments((prev) => [aptData.appointment, ...prev]);
+      setConfirmedBooking(aptData.appointment);
     } catch (err: any) {
       console.error("Booking failed:", err);
       setConflictError(err.message || "Slot conflict or payment failure. Please choose another time.");
@@ -158,11 +169,26 @@ function AppointmentsContent() {
     }
   };
 
-  const handleCancelAppointment = (aptId: string) => {
+  const handleCancelAppointment = async (aptId: string) => {
     if (confirm("Are you sure you want to cancel this appointment? The consultation fee will be refunded per policy.")) {
-      setMyAppointments(
-        myAppointments.map((a) => (a.id === aptId ? { ...a, status: "cancelled" } : a))
-      );
+      try {
+        const res = await fetch("/api/appointments", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ appointmentId: aptId, status: "cancelled" }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setMyAppointments((prev) =>
+            prev.map((a) => (a.id === aptId ? { ...a, status: "cancelled" } : a))
+          );
+        }
+      } catch (err) {
+        console.error("Cancel failed:", err);
+        setMyAppointments((prev) =>
+          prev.map((a) => (a.id === aptId ? { ...a, status: "cancelled" } : a))
+        );
+      }
     }
   };
 

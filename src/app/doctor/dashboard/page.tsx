@@ -81,6 +81,21 @@ export default function DoctorDashboardPage() {
     },
   ]);
 
+  React.useEffect(() => {
+    async function loadDoctorAppointments() {
+      try {
+        const res = await fetch(`/api/appointments?doctorId=${doctor.id}`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.appointments) && data.appointments.length > 0) {
+          setAppointments(data.appointments);
+        }
+      } catch (err) {
+        console.error("Failed to load doctor appointments:", err);
+      }
+    }
+    loadDoctorAppointments();
+  }, [doctor.id]);
+
   const todayCount = appointments.length;
   const completedCount = appointments.filter((a) => a.status === "completed").length;
   const pendingCount = appointments.filter((a) => a.status === "confirmed").length;

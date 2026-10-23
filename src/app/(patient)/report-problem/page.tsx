@@ -12,6 +12,7 @@ import { ProblemReport } from "@/types";
 export default function ReportProblemPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const [recentReports, setRecentReports] = useState<ProblemReport[]>([
     {
       id: "rep-001",
@@ -35,27 +36,47 @@ export default function ReportProblemPage() {
     relatedBookingId: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    async function loadReports() {
+      try {
+        const res = await fetch("/api/reports?userId=demo-patient-001");
+        const data = await res.json();
+        if (data.success && Array.isArray(data.reports) && data.reports.length > 0) {
+          setRecentReports(data.reports);
+        }
+      } catch (err) {
+        console.error("Failed to load problem reports:", err);
+      }
+    }
+    loadReports();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMsg("");
 
-    setTimeout(() => {
-      const newReport: ProblemReport = {
-        id: `rep-${Date.now().toString().slice(-4)}`,
-        user_id: "demo-patient-001",
-        user_name: "Rohit Verma",
-        user_email: "patient.demo@mediconnect.org",
-        category: form.category,
-        subject: form.subject,
-        description: form.description,
-        related_booking_id: form.relatedBookingId || undefined,
-        status: "open",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+    try {
+      const res = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: form.category,
+          subject: form.subject,
+          description: form.description,
+          relatedBookingId: form.relatedBookingId || undefined,
+          userId: "demo-patient-001",
+          userName: "Rohit Verma",
+          userEmail: "patient.demo@mediconnect.org",
+        }),
+      });
 
-      setRecentReports([newReport, ...recentReports]);
-      setLoading(false);
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to submit report");
+      }
+
+      setRecentReports((prev) => [data.report, ...prev]);
       setSuccess(true);
       setForm({
         category: "booking",
@@ -64,7 +85,12 @@ export default function ReportProblemPage() {
         relatedBookingId: "",
       });
       setTimeout(() => setSuccess(false), 5000);
-    }, 800);
+    } catch (err: any) {
+      console.error("Report submit error:", err);
+      setErrorMsg(err.message || "Failed to submit grievance. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -86,6 +112,13 @@ export default function ReportProblemPage() {
             <div className="font-semibold">Support Ticket Submitted Successfully</div>
             <div>A confirmation receipt has been dispatched to patient.demo@mediconnect.org. Support SLA: &lt; 24 hours.</div>
           </div>
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="flex items-center gap-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 p-4 text-xs text-red-800 dark:text-red-200">
+          <AlertCircle className="h-5 w-5 shrink-0 text-red-600" />
+          <div className="font-medium">{errorMsg}</div>
         </div>
       )}
 

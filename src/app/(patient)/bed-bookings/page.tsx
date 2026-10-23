@@ -72,18 +72,35 @@ function BedBookingsContent() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const activeHospital = DEMO_HOSPITALS.find((h) => h.id === selectedHospitalId) || DEMO_HOSPITALS[0];
+  const [liveBeds, setLiveBeds] = useState<Bed[]>(DEMO_BEDS);
+
+  const fetchLiveBeds = React.useCallback(async () => {
+    try {
+      const res = await fetch(`/api/beds?hospitalId=${selectedHospitalId}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.beds) && data.beds.length > 0) {
+        setLiveBeds(data.beds);
+      }
+    } catch (err) {
+      console.error("Failed to load live beds:", err);
+    }
+  }, [selectedHospitalId]);
+
+  useEffect(() => {
+    fetchLiveBeds();
+  }, [fetchLiveBeds]);
 
   // Beds in currently selected hospital and ward
   const bedsInView = useMemo(() => {
-    return DEMO_BEDS.filter(
+    return liveBeds.filter(
       (b) => b.hospital_id === activeHospital.id && b.ward === selectedWard
     );
-  }, [activeHospital.id, selectedWard]);
+  }, [liveBeds, activeHospital.id, selectedWard]);
 
   // Overall statistics for active hospital
   const hospitalBeds = useMemo(() => {
-    return DEMO_BEDS.filter((b) => b.hospital_id === activeHospital.id);
-  }, [activeHospital.id]);
+    return liveBeds.filter((b) => b.hospital_id === activeHospital.id);
+  }, [liveBeds, activeHospital.id]);
 
   const totalCount = hospitalBeds.length;
   const availableCount = hospitalBeds.filter((b) => b.status === "available").length;
@@ -157,6 +174,7 @@ function BedBookingsContent() {
 
       setHeldBooking(data);
       setHoldSecondsRemaining(600);
+      fetchLiveBeds();
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to hold bed");
     } finally {
@@ -202,6 +220,7 @@ function BedBookingsContent() {
 
       setConfirmedBooking(confirmData);
       setHeldBooking(null);
+      fetchLiveBeds();
     } catch (err: any) {
       setErrorMessage(err.message || "Payment or confirmation failed");
     } finally {

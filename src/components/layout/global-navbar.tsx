@@ -16,14 +16,59 @@ import {
   LifeBuoy,
   LogOut,
   ChevronDown,
+  Bell,
+  CheckCheck,
 } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { Button } from "@/components/ui/button";
+
+interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: "info" | "success" | "warning" | "emergency";
+  link?: string;
+  read: boolean;
+  created_at: string;
+}
 
 export function GlobalNavbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [portalDropdownOpen, setPortalDropdownOpen] = useState(false);
+  const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  React.useEffect(() => {
+    async function loadNotifications() {
+      try {
+        const res = await fetch("/api/notifications");
+        const data = await res.json();
+        if (data.success && Array.isArray(data.notifications)) {
+          setNotifications(data.notifications);
+          setUnreadCount(data.unreadCount || 0);
+        }
+      } catch (err) {
+        console.error("Failed to load notifications:", err);
+      }
+    }
+    loadNotifications();
+  }, []);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markAllRead: true }),
+      });
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error("Failed to mark notifications read:", err);
+    }
+  };
 
   const navLinks = [
     { href: "/", label: "Home", icon: Activity },
@@ -139,6 +184,85 @@ export function GlobalNavbar() {
           </div>
 
           <ThemeToggle />
+
+          {/* In-App Notifications Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
+              className="relative p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full transition-colors"
+              title="Notifications"
+              aria-label="Notifications"
+            >
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-emergency px-1 text-[10px] font-bold text-white shadow-sm">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {notifDropdownOpen && (
+              <div
+                className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl border border-border bg-card p-2 shadow-xl z-50 text-xs"
+                onMouseLeave={() => setNotifDropdownOpen(false)}
+              >
+                <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+                  <div className="font-semibold text-foreground flex items-center gap-2">
+                    <Bell className="h-3.5 w-3.5 text-brand-teal" />
+                    Notifications
+                    {unreadCount > 0 && (
+                      <span className="text-[10px] rounded-full bg-teal-100 dark:bg-teal-900/60 text-brand-teal px-1.5 py-0.2 font-bold">
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-[11px] text-brand-teal hover:underline flex items-center gap-1 font-medium"
+                    >
+                      <CheckCheck className="h-3 w-3" />
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-72 overflow-y-auto divide-y divide-border py-1">
+                  {notifications.length === 0 ? (
+                    <div className="py-6 text-center text-muted-foreground text-xs">
+                      No notifications at this time
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <Link
+                        key={n.id}
+                        href={n.link || "#"}
+                        onClick={() => setNotifDropdownOpen(false)}
+                        className={`block p-3 rounded-lg transition-colors hover:bg-muted/70 ${
+                          !n.read ? "bg-teal-50/50 dark:bg-teal-950/20" : ""
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-semibold text-foreground flex items-center gap-1.5">
+                            {!n.read && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-brand-teal shrink-0" />
+                            )}
+                            {n.title}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            {new Date(n.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground mt-0.5 text-[11px] leading-relaxed">
+                          {n.message}
+                        </p>
+                      </Link>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* User Profile / Report Problem shortcut */}
           <Link

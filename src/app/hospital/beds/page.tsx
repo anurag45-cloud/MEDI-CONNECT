@@ -35,6 +35,21 @@ export default function HospitalBedsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [auditNotice, setAuditNotice] = useState("");
 
+  React.useEffect(() => {
+    async function loadHospitalBeds() {
+      try {
+        const res = await fetch(`/api/beds?hospitalId=${hospital.id}`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.beds) && data.beds.length > 0) {
+          setBeds(data.beds);
+        }
+      } catch (err) {
+        console.error("Failed to load hospital beds:", err);
+      }
+    }
+    loadHospitalBeds();
+  }, [hospital.id]);
+
   const filteredBeds = beds.filter((b) => {
     const matchesWard = selectedWard === "all" || b.ward === selectedWard;
     const matchesStatus = selectedStatus === "all" || b.status === selectedStatus;
@@ -64,7 +79,7 @@ export default function HospitalBedsPage() {
     setTimeout(() => setAuditNotice(""), 4000);
   };
 
-  const handleStatusChange = (bedId: string, newStatus: BedStatus) => {
+  const handleStatusChange = async (bedId: string, newStatus: BedStatus) => {
     const targetBed = beds.find((b) => b.id === bedId);
     if (!targetBed) return;
 
@@ -72,6 +87,25 @@ export default function HospitalBedsPage() {
     if (targetBed.status === "occupied" && newStatus === "available") {
       alert("Validation Error: Patient is currently admitted in this bed. Formal clinical discharge must be recorded before releasing bed to available inventory.");
       return;
+    }
+
+    try {
+      const res = await fetch("/api/beds", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bedId,
+          status: newStatus,
+          hospitalId: hospital.id,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        alert(data.error || "Failed to update bed status");
+        return;
+      }
+    } catch (err) {
+      console.error("Failed to patch bed status:", err);
     }
 
     setBeds(

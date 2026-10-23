@@ -41,8 +41,20 @@ export default function ConsultationWorkspacePage({
   );
   const [followUp, setFollowUp] = useState("Review in Cardiology OPD after 2 weeks with repeat lipid profile.");
 
-  const handleFinalize = (e: React.FormEvent) => {
+  const handleFinalize = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      await fetch("/api/appointments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appointmentId: params.id,
+          status: "completed",
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to patch consultation status:", err);
+    }
     setStatus("completed");
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);

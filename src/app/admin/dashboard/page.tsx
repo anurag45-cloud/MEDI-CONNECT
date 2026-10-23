@@ -80,6 +80,32 @@ export default function AdminDashboardPage() {
     },
   ]);
 
+  React.useEffect(() => {
+    async function loadReports() {
+      try {
+        const res = await fetch("/api/reports");
+        const data = await res.json();
+        if (data.success && Array.isArray(data.reports) && data.reports.length > 0) {
+          setReports(
+            data.reports.map((r: any) => ({
+              id: r.id,
+              user: `${r.user_name || "Patient"} (${r.user_email || "N/A"})`,
+              category: r.category,
+              subject: r.subject,
+              description: r.description,
+              status: r.status,
+              adminReply: r.admin_reply || "",
+              submittedAt: r.created_at ? new Date(r.created_at).toISOString().split("T")[0] : "2026-10-24",
+            }))
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load admin reports:", err);
+      }
+    }
+    loadReports();
+  }, []);
+
   // Audit Logs
   const [auditLogs, setAuditLogs] = useState([
     {
@@ -136,8 +162,23 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleSendReply = (reportId: string) => {
+  const handleSendReply = async (reportId: string) => {
     if (!replyText) return;
+
+    try {
+      await fetch("/api/reports", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportId,
+          status: "resolved",
+          adminReply: replyText,
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to patch report:", err);
+    }
+
     setReports(
       reports.map((r) =>
         r.id === reportId ? { ...r, status: "resolved", adminReply: replyText } : r
