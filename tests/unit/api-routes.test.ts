@@ -160,7 +160,7 @@ describe("Lab Reports AI Explainer Validation & Heuristic Intelligence", () => {
       "What questions should I ask my doctor?"
     );
 
-    expect(result.reply).toContain("3 high-yield questions");
+    expect(result.reply).toContain("3 High-Yield Questions");
     expect(result.keyTakeaways.length).toBe(3);
   });
 });

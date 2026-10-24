@@ -19,9 +19,12 @@ import {
   Bell,
   CheckCheck,
   FileText,
+  MapPin,
+  PhoneCall,
 } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface AppNotification {
   id: string;
@@ -87,15 +90,16 @@ export function GlobalNavbar() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-surface/90 backdrop-blur-md transition-colors">
-      <div className="max-w-7xl mx-auto flex h-18 min-h-[4.5rem] items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Brand Logo */}
-        <div className="flex items-center gap-6 lg:gap-8">
+      <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Mobile Brand Logo & Desktop Context Badge */}
+        <div className="flex items-center gap-4">
+          {/* Logo on mobile screens */}
           <Link
             href="/"
-            className="flex items-center gap-2.5 font-bold text-xl tracking-tight text-foreground hover:opacity-95 shrink-0"
+            className="flex md:hidden items-center gap-2 font-bold text-lg tracking-tight text-foreground hover:opacity-95 shrink-0"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-teal text-white shadow-sm">
-              <Activity className="h-5 w-5" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-teal text-white shadow-sm">
+              <Activity className="h-4 w-4" />
             </div>
             <span className="flex items-center">
               <span className="text-brand-teal">Medi</span>
@@ -103,31 +107,31 @@ export function GlobalNavbar() {
             </span>
           </Link>
 
-          {/* Desktop Nav Links - Set Vertically (Icon on Top, Label Below) */}
-          <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              const active = isActive(link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`flex flex-col items-center justify-center text-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-150 ${
-                    active
-                      ? "bg-brand-mint text-brand-teal font-semibold dark:bg-teal-950/60 dark:text-teal-300 shadow-xs"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                  }`}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="text-[11px] leading-tight whitespace-nowrap">{link.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          {/* Desktop Clinical Header Info */}
+          <div className="hidden md:flex items-center gap-2.5">
+            <Badge variant="outline" className="px-2.5 py-1 text-xs border-border flex items-center gap-1.5 font-medium bg-surface text-foreground">
+              <MapPin className="h-3.5 w-3.5 text-brand-teal" />
+              <span>Kota, Rajasthan</span>
+            </Badge>
+            <span className="text-xs text-muted-foreground">•</span>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Verified Doctors & Real-Time Hospital Beds</span>
+            </div>
+          </div>
         </div>
 
         {/* Right Action Icons & Menus */}
         <div className="hidden md:flex items-center gap-2">
+          {/* Quick 108 Emergency Dial */}
+          <a
+            href="tel:108"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 hover:bg-red-100 transition-colors text-xs font-semibold mr-1"
+            title="Immediate Emergency Ambulance (108)"
+          >
+            <PhoneCall className="h-3.5 w-3.5 text-brand-emergency" />
+            <span>Emergency 108</span>
+          </a>
           {/* Portals Dropdown - Set Vertically */}
           <div className="relative">
             <button

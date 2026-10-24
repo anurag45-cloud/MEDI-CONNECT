@@ -27,6 +27,8 @@ import {
   HelpCircle,
   ChevronRight,
   Check,
+  Key,
+  X,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,13 +43,41 @@ export default function LabReportsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchFilter, setSearchFilter] = useState<string>("");
 
-  // Chat State
+  // Chat State & Real AI Engine Configuration
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [inputQuestion, setInputQuestion] = useState("");
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastAudioScript, setLastAudioScript] = useState("");
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [aiEngineName, setAiEngineName] = useState<string>("Real AI (Online)");
+  const [customApiKey, setCustomApiKey] = useState<string>("");
+  const [tempApiKeyInput, setTempApiKeyInput] = useState<string>("");
+  const [showKeyModal, setShowKeyModal] = useState<boolean>(false);
+
+  // Load saved key on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("mediconnect_gemini_key") || "";
+      if (saved) {
+        setCustomApiKey(saved);
+        setTempApiKeyInput(saved);
+      }
+    }
+  }, []);
+
+  const handleSaveApiKey = () => {
+    const trimmed = tempApiKeyInput.trim();
+    setCustomApiKey(trimmed);
+    if (typeof window !== "undefined") {
+      if (trimmed) {
+        localStorage.setItem("mediconnect_gemini_key", trimmed);
+      } else {
+        localStorage.removeItem("mediconnect_gemini_key");
+      }
+    }
+    setShowKeyModal(false);
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -76,11 +106,13 @@ export default function LabReportsPage() {
             parameters: activeReport.parameters,
             clinicalImpression: activeReport.clinical_impression,
             userQuestion: "Please give me a warm, simple explanation of my results.",
+            userApiKey: customApiKey || undefined,
           }),
         });
 
         const data = await res.json();
         if (data.success) {
+          if (data.aiEngine) setAiEngineName(data.aiEngine);
           setChatMessages([
             {
               id: `msg-bot-init-${activeReport.id}`,
@@ -99,7 +131,7 @@ export default function LabReportsPage() {
     }
 
     initChatForReport();
-  }, [activeReport.id, activeReport.title, activeReport.parameters, activeReport.clinical_impression]);
+  }, [activeReport.id, activeReport.title, activeReport.parameters, activeReport.clinical_impression, customApiKey]);
 
   // Scroll chat to bottom
   useEffect(() => {
@@ -133,11 +165,13 @@ export default function LabReportsPage() {
           clinicalImpression: activeReport.clinical_impression,
           userQuestion: questionToSend,
           history: chatMessages.slice(-4),
+          userApiKey: customApiKey || undefined,
         }),
       });
 
       const data = await res.json();
       if (data.success) {
+        if (data.aiEngine) setAiEngineName(data.aiEngine);
         const botMsg: ChatMessage = {
           id: `msg-bot-${Date.now()}`,
           sender: "bot",
@@ -454,13 +488,24 @@ export default function LabReportsPage() {
                       MediBot Lab Assistant
                       <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                     </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      Explains in simple human language
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <span>Real-Time AI Educator</span>
+                      <span>•</span>
+                      <span className="font-medium text-brand-teal">{aiEngineName}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowKeyModal(!showKeyModal)}
+                    className="h-7 w-7 text-muted-foreground hover:text-brand-teal"
+                    title="AI Studio API Key Settings (Optional Gemini Cloud Key)"
+                  >
+                    <Key className="h-3.5 w-3.5" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -472,35 +517,106 @@ export default function LabReportsPage() {
                   </Button>
                 </div>
               </div>
+
+              {/* Optional Gemini Key Input Panel */}
+              {showKeyModal && (
+                <div className="mt-2.5 p-2.5 rounded-lg bg-surface border border-border space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-foreground flex items-center gap-1.5 text-[11px]">
+                      <Sparkles className="h-3 w-3 text-brand-teal" />
+                      Google Gemini API Key (Optional)
+                    </span>
+                    <button
+                      onClick={() => setShowKeyModal(false)}
+                      className="text-muted-foreground hover:text-foreground p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    MediBot works online automatically via real-time neural LLM inference. To use your personal Google AI Studio key directly, paste it below:
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      type="password"
+                      placeholder="AIzaSy..."
+                      value={tempApiKeyInput}
+                      onChange={(e) => setTempApiKeyInput(e.target.value)}
+                      className="h-7 text-xs bg-card"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleSaveApiKey}
+                      className="h-7 px-2.5 text-xs bg-brand-teal hover:bg-brand-teal-hover text-white shrink-0"
+                    >
+                      Save Key
+                    </Button>
+                    {customApiKey && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setTempApiKeyInput("");
+                          setCustomApiKey("");
+                          if (typeof window !== "undefined") localStorage.removeItem("mediconnect_gemini_key");
+                          setShowKeyModal(false);
+                        }}
+                        className="h-7 px-2 text-xs text-red-600 hover:text-red-700 shrink-0"
+                      >
+                        Reset
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardHeader>
 
-            {/* Quick Prompt Questions */}
-            <div className="p-2.5 bg-muted/30 border-b border-border/60 shrink-0 space-y-1">
-              <div className="text-[10px] font-semibold text-muted-foreground">Ask 1-Tap Questions:</div>
-              <div className="flex flex-wrap gap-1">
+            {/* Quick Prompt Questions - Set Vertically */}
+            <div className="p-2.5 bg-muted/20 border-b border-border/60 shrink-0 space-y-1.5">
+              <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+                <span>1-Tap AI Questions</span>
+                <span className="text-[9px] text-brand-teal font-medium">Click to Ask</span>
+              </div>
+              <div className="flex flex-col gap-1">
                 <button
-                  onClick={() => handleSendMessage("Explain this report in simple words")}
-                  className="px-2 py-0.5 rounded-full bg-surface hover:bg-brand-mint text-[10px] border border-border text-foreground transition-colors"
+                  onClick={() => handleSendMessage("Explain this report in simple, everyday words")}
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-surface hover:bg-brand-mint text-[11px] border border-border text-foreground transition-colors text-left group"
                 >
-                  💡 Explain Simply
+                  <span className="flex items-center gap-1.5">
+                    <span>💡</span>
+                    <span className="font-medium">Explain Results Simply</span>
+                  </span>
+                  <ArrowRight className="h-3 w-3 text-muted-foreground group-hover:text-brand-teal group-hover:translate-x-0.5 transition-transform" />
                 </button>
                 <button
-                  onClick={() => handleSendMessage("What food should I eat or avoid?")}
-                  className="px-2 py-0.5 rounded-full bg-surface hover:bg-brand-mint text-[10px] border border-border text-foreground transition-colors"
+                  onClick={() => handleSendMessage("What food should I eat or avoid based on these results?")}
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-surface hover:bg-brand-mint text-[11px] border border-border text-foreground transition-colors text-left group"
                 >
-                  🥗 Diet Advice
+                  <span className="flex items-center gap-1.5">
+                    <span>🥗</span>
+                    <span className="font-medium">Tailored Diet Advice</span>
+                  </span>
+                  <ArrowRight className="h-3 w-3 text-muted-foreground group-hover:text-brand-teal group-hover:translate-x-0.5 transition-transform" />
                 </button>
                 <button
-                  onClick={() => handleSendMessage("What should I ask my doctor?")}
-                  className="px-2 py-0.5 rounded-full bg-surface hover:bg-brand-mint text-[10px] border border-border text-foreground transition-colors"
+                  onClick={() => handleSendMessage("What specific questions should I ask my doctor?")}
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-surface hover:bg-brand-mint text-[11px] border border-border text-foreground transition-colors text-left group"
                 >
-                  ❓ Doctor Questions
+                  <span className="flex items-center gap-1.5">
+                    <span>🩺</span>
+                    <span className="font-medium">Questions for My Doctor</span>
+                  </span>
+                  <ArrowRight className="h-3 w-3 text-muted-foreground group-hover:text-brand-teal group-hover:translate-x-0.5 transition-transform" />
                 </button>
                 <button
-                  onClick={() => handleSendMessage("Is there any emergency in this report?")}
-                  className="px-2 py-0.5 rounded-full bg-surface hover:bg-brand-mint text-[10px] border border-border text-foreground transition-colors"
+                  onClick={() => handleSendMessage("Is there any dangerous finding or emergency in this report?")}
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-surface hover:bg-brand-mint text-[11px] border border-border text-foreground transition-colors text-left group"
                 >
-                  ⚠️ Is it Serious?
+                  <span className="flex items-center gap-1.5">
+                    <span>⚠️</span>
+                    <span className="font-medium">Urgency & Safety Check</span>
+                  </span>
+                  <ArrowRight className="h-3 w-3 text-muted-foreground group-hover:text-brand-teal group-hover:translate-x-0.5 transition-transform" />
                 </button>
               </div>
             </div>

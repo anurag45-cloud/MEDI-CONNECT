@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { explainerRequestSchema, getHeuristicLabExplanation } from "@/lib/services/lab-explainer";
+import {
+  explainerRequestSchema,
+  queryRealAIEngine,
+  getHeuristicLabExplanation,
+} from "@/lib/services/lab-explainer";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,10 +18,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { reportTitle, parameters, clinicalImpression, userQuestion, history } = parsed.data;
-    const apiKey = process.env.GEMINI_API_KEY;
+    const {
+      reportTitle,
+      parameters,
+      clinicalImpression,
+      userQuestion,
+      history,
+      userApiKey,
+    } = parsed.data;
 
-    // Use Gemini 1.5 Flash if available
+    const apiKey = userApiKey || process.env.GEMINI_API_KEY;
+
+    // 1. Google Gemini 1.5 Flash (if API key is present)
     if (apiKey && apiKey !== "your-gemini-api-key" && !apiKey.startsWith("test_")) {
       try {
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -68,14 +80,31 @@ Guidelines:
         const parsedJson = JSON.parse(text);
         return NextResponse.json({
           success: true,
+          aiEngine: "Google Gemini 1.5 Flash",
           ...parsedJson,
         });
       } catch (geminiError) {
-        console.warn("Gemini lab explanation failed, using clinical heuristic fallback:", geminiError);
+        console.warn("Gemini lab explanation failed, trying real online LLM inference:", geminiError);
       }
     }
 
-    // High-precision conversational heuristic explainer fallback
+    // 2. Real Online Neural LLM Inference (Fast, free, zero-config out of the box)
+    const realAIResult = await queryRealAIEngine(
+      reportTitle,
+      parameters,
+      clinicalImpression,
+      userQuestion,
+      history
+    );
+
+    if (realAIResult) {
+      return NextResponse.json({
+        success: true,
+        ...realAIResult,
+      });
+    }
+
+    // 3. High-precision Clinical Intelligence Fallback (Guaranteed 100% uptime)
     const heuristic = getHeuristicLabExplanation(
       reportTitle,
       parameters,
